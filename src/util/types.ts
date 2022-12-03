@@ -16,8 +16,11 @@ export interface Session {
 export interface User {
     id: string;
     username: string;
+    email: string;
     image: string;
+    name: string;
 }
+
 export interface CreateUsernameResponse {
     success?: boolean;
     error?: string;
