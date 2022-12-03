@@ -1,6 +1,6 @@
-import { graphql } from "graphql";
+import gql from "graphql-tag";
 
-const typeDefs = `#graphql
+const typeDefs = gql`
     type User {
         id: String
         username: String

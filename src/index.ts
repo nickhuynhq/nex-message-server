@@ -1,21 +1,39 @@
-import { ApolloServer } from '@apollo/server';
-import { startStandaloneServer } from '@apollo/server/standalone';
-import typeDefs from './graphql/typeDefs';
-import resolvers from './graphql/resolvers';
+import { ApolloServer } from "apollo-server-express";
+import {
+  ApolloServerPluginDrainHttpServer,
+  ApolloServerPluginLandingPageLocalDefault,
+} from "apollo-server-core";
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import express from "express";
+import http from "http";
+import typeDefs from "./graphql/typeDefs"
+import resolvers from "./graphql/resolvers"
 
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({
+
+async function main() {
+  const app = express();
+  const httpServer = http.createServer(app);
+
+  const schema = makeExecutableSchema({
     typeDefs,
     resolvers,
+  })
+
+  const server = new ApolloServer({
+    schema,
+    csrfPrevention: true,
+    cache: "bounded",
+    plugins: [
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+      ApolloServerPluginLandingPageLocalDefault({ embed: true }),
+    ],
   });
-  
-  // Passing an ApolloServer instance to the `startStandaloneServer` function:
-  //  1. creates an Express app
-  //  2. installs your ApolloServer instance as middleware
-  //  3. prepares your app to handle incoming requests
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000 },
-  });
-  
-  console.log(`🚀  Server ready at: ${url}`);
+  await server.start();
+  server.applyMiddleware({ app });
+  await new Promise<void>((resolve) =>
+    httpServer.listen({ port: 4000 }, resolve)
+  );
+  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
+}
+
+main().catch((error) => console.log(error));
