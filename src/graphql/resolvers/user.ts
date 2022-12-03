@@ -40,7 +40,7 @@ const resolvers = {
           id: userId
         },
         data: {
-          username
+          username,
         }
       })
 
@@ -48,7 +48,7 @@ const resolvers = {
       
       // Update user
 
-     } catch (error) {
+     } catch (error: any) {
       console.log("create username error", error)
       return {
         error: error?.message,
