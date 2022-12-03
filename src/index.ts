@@ -9,7 +9,7 @@ import http from "http";
 import typeDefs from "./graphql/typeDefs";
 import resolvers from "./graphql/resolvers";
 import { getSession } from "next-auth/react";
-import { GraphQLConext } from "./util/types";
+import { GraphQLConext, Session } from "./util/types";
 import { PrismaClient } from '@prisma/client'
 import * as dotenv from "dotenv";
 
@@ -37,7 +37,7 @@ async function main() {
     csrfPrevention: true,
     cache: "bounded",
     context: async ({ req, res }): Promise<GraphQLConext> => {
-      const session = await getSession({ req });
+      const session = await getSession({ req }) as Session;
       return { session, prisma };
     },
     plugins: [
