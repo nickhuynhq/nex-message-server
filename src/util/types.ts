@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import {ISODateString} from "next-auth"
 
-export interface GraphQLConext {
+export interface GraphQLContext {
     session: Session | null;
     prisma: PrismaClient;
     // pubsub

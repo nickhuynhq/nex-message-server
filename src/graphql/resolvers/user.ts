@@ -1,4 +1,4 @@
-import { CreateUsernameResponse, GraphQLConext } from "../../util/types";
+import { CreateUsernameResponse, GraphQLContext } from "../../util/types";
 import { ApolloError } from "apollo-server-core";
 import { User } from "@prisma/client";
 
@@ -7,7 +7,7 @@ const resolvers = {
     searchUsers: async (
       _: any,
       args: { username: string },
-      context: GraphQLConext
+      context: GraphQLContext
     ): Promise<Array<User>> => {
       const { username: searchedUsername } = args;
       const { session, prisma } = context;
@@ -47,7 +47,7 @@ const resolvers = {
     createUsername: async (
       _: any,
       args: { username: string },
-      context: GraphQLConext
+      context: GraphQLContext
     ): Promise<CreateUsernameResponse> => {
       const { username } = args;
       const { session, prisma } = context;
