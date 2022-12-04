@@ -1,9 +1,48 @@
 import { CreateUsernameResponse, GraphQLConext } from "../../util/types";
+import { ApolloError } from "apollo-server-core";
+import { User } from "@prisma/client";
 
 const resolvers = {
   Query: {
-    searchUsers: () => {},
+    searchUsers: async (
+      _: any,
+      args: { username: string },
+      context: GraphQLConext
+    ): Promise<Array<User>> => {
+      const { username: searchedUsername } = args;
+      const { session, prisma } = context;
+
+      if (!session?.user) {
+        throw new ApolloError("Not authroized");
+      }
+
+      const {
+        user: { username: myUsername },
+      } = session;
+
+      try {
+
+        // Search username where it contains the input but is not myUsername
+        // Mode is set to Case insensitive ie. "T or t"
+        const users = await prisma.user.findMany({
+          where: {
+            username: {
+              contains: searchedUsername,
+              not: myUsername,
+              mode: "insensitive",
+            },
+          },
+        });
+
+        return users;
+        
+      } catch (error: any) {
+        console.log("searchUsers error", error);
+        throw new ApolloError(error?.message);
+      }
+    },
   },
+
   Mutation: {
     createUsername: async (
       _: any,
@@ -13,47 +52,46 @@ const resolvers = {
       const { username } = args;
       const { session, prisma } = context;
 
-     if (!session?.user) {
-      return {
-        error: "Not Authorized",
-      }
-     }
-
-     const {id: userId} = session.user;
-
-     try {
-      // Check if username is not taken
-      const existingUser = await prisma.user.findUnique({
-        where: {
-          username,
-        }
-      });
-
-      if (existingUser) {
+      if (!session?.user) {
         return {
-          error: "Username already taken. Try another"
-        }
+          error: "Not Authorized",
+        };
       }
 
-      await prisma.user.update({
-        where: {
-          id: userId
-        },
-        data: {
-          username,
+      const { id: userId } = session.user;
+
+      try {
+        // Check if username is not taken
+        const existingUser = await prisma.user.findUnique({
+          where: {
+            username,
+          },
+        });
+
+        if (existingUser) {
+          return {
+            error: "Username already taken. Try another",
+          };
         }
-      })
 
-      return {success: true}
-      
-      // Update user
+        await prisma.user.update({
+          where: {
+            id: userId,
+          },
+          data: {
+            username,
+          },
+        });
 
-     } catch (error: any) {
-      console.log("create username error", error)
-      return {
-        error: error?.message,
+        return { success: true };
+
+        // Update user
+      } catch (error: any) {
+        console.log("create username error", error);
+        return {
+          error: error?.message,
+        };
       }
-     }
     },
   },
 };
