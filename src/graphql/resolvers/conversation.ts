@@ -8,9 +8,11 @@ const resolvers = {
       _: any,
       args: { participantIds: Array<string> },
       context: GraphQLContext
-    ) => {
+    ): Promise<{conversationId: string}>=> {
       const { session, prisma } = context;
       const { participantIds } = args;
+
+      console.log("IDs", participantIds)
 
       if (!session?.user) {
         throw new ApolloError("Not Authorized");
@@ -35,6 +37,13 @@ const resolvers = {
           // indicate what fields you want back
           include: conversationPopulated,
         });
+
+        // emit a CONVERSATION_CREATED event using pubsub
+
+        return {
+          conversationId: conversation.id,
+        }
+
       } catch (error) {
         console.log("createConversation error", error);
         throw new ApolloError("Error creating conversation");
