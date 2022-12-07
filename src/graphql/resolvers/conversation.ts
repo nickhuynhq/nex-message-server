@@ -105,7 +105,7 @@ const resolvers = {
       subscribe: (_: any, __: any, context: GraphQLContext) => {
         const { pubsub } = context;
 
-        pubsub.asyncIterator(["CONVERSATION_CREATED"]);
+        return pubsub.asyncIterator(["CONVERSATION_CREATED"]);
       },
     },
   },
