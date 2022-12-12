@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { GraphQLError } from "graphql";
-import { GraphQLContext, SendMessageArguments } from "../../util/types";
+import { PubSub, withFilter } from "graphql-subscriptions";
+import {
+  GraphQLContext,
+  SendMessageArguments,
+  MessageSentSubscriptionPayload,
+} from "../../util/types";
 
 const resolvers = {
   Query: {},
@@ -86,7 +91,23 @@ const resolvers = {
     },
   },
 
-  Subscription: {},
+  Subscription: {
+    messageSent: {
+      subscribe: withFilter(
+        (_: any, __: any, context: GraphQLContext) => {
+          const { pubsub } = context;
+          return pubsub.asyncIterator(["MESSAGE_SENT"]);
+        },
+        (
+          payload: MessageSentSubscriptionPayload,
+          args: { conversationId: string },
+          context: GraphQLContext
+        ) => {
+          return payload.messageSent.conversationId === args.conversationId;
+        }
+      ),
+    },
+  },
 };
 
 // Prisma validator that represent strucuture of entity returned from DB
