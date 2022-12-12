@@ -5,10 +5,68 @@ import {
   GraphQLContext,
   SendMessageArguments,
   MessageSentSubscriptionPayload,
+  MessagePopulated,
 } from "../../util/types";
+import { userIsConversationParticipant } from "../../util/functions";
+import { conversationPopulated } from "./conversation";
 
 const resolvers = {
-  Query: {},
+  Query: {
+    messages: async function (
+      _: any,
+      args: { conversationId: string },
+      context: GraphQLContext
+    ): Promise<Array<MessagePopulated>> {
+      const { session, prisma } = context;
+      const { conversationId } = args;
+
+      if (!session?.user) {
+        throw new GraphQLError("Not Authorized");
+      }
+
+      const {
+        user: { id: userId },
+      } = session;
+
+      // Verify that converation exists and the user is a participant
+      const conversation = await prisma.conversation.findUnique({
+        where: {
+          id: conversationId,
+        },
+        include: conversationPopulated,
+      });
+
+      if (!conversation) {
+        throw new GraphQLError("Conversation Not Found");
+      }
+
+      const allowedToView = userIsConversationParticipant(
+        conversation.participants,
+        userId
+      );
+
+      if (!allowedToView) {
+        throw new GraphQLError("Not Authorized");
+      }
+
+      try {
+        const messages = await prisma.message.findMany({
+          where: {
+            conversationId,
+          },
+          include: messagePopulated,
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
+
+        return messages;
+      } catch (error: any) {
+        console.log("Messages Error", error);
+        throw new GraphQLError(error?.message);
+      }
+    },
+  },
 
   Mutation: {
     sendMessage: async function (
