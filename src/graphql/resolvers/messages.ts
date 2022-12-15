@@ -101,6 +101,19 @@ const resolvers = {
           include: messagePopulated,
         });
 
+        // Find ConversationParticipant Entity
+        const participant = await prisma.conversationParticipant.findFirst({
+          where: {
+            userId,
+            conversationId,
+          }
+        });
+
+        // Participant should always exist
+        if (!participant) {
+          throw new GraphQLError("Participant does not exist")
+        }
+
         // Update conversation entity
         const conversation = await prisma.conversation.update({
           where: {
@@ -112,7 +125,7 @@ const resolvers = {
               // Update when User(sender) sends message, they have already seen it
               update: {
                 where: {
-                  id: senderId,
+                  id: participant.id,
                 },
                 data: {
                   hasSeenLatestMessage: true,
@@ -131,6 +144,7 @@ const resolvers = {
               },
             },
           },
+          include: conversationPopulated,
         });
 
         // Alert clients that message is sent
