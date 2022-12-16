@@ -131,11 +131,12 @@ const resolvers = {
             hasSeenLatestMessage: true,
           },
         });
+
+        return true;
       } catch (error: any) {
         console.log("markConversationAsRead Error", error);
         throw new GraphQLError(error?.message);
       }
-      return true;
     },
   },
 
