@@ -1,5 +1,5 @@
 import { ConversationPopulated, GraphQLContext } from "../../util/types";
-import {GraphQLError} from 'graphql'
+import { GraphQLError } from "graphql";
 import { Prisma } from "@prisma/client";
 import { withFilter } from "graphql-subscriptions";
 
@@ -96,6 +96,46 @@ const resolvers = {
         console.log("createConversation error", error);
         throw new GraphQLError("Error creating conversation");
       }
+    },
+
+    markConversationAsRead: async function (
+      _: any,
+      args: { userId: string; conversationId: string },
+      context: GraphQLContext
+    ): Promise<boolean> {
+      const { session, prisma } = context;
+      const { userId, conversationId } = args;
+
+      if (!session?.user) {
+        throw new GraphQLError("Not authorized");
+      }
+
+      try {
+        const participant = await prisma.conversationParticipant.findFirst({
+          where: {
+            userId,
+            conversationId,
+          },
+        });
+
+        // Should always exist, but this is to be safe
+        if (!participant) {
+          throw new GraphQLError("Participant entity not found");
+        }
+
+        await prisma.conversationParticipant.update({
+          where: {
+            id: participant.id,
+          },
+          data: {
+            hasSeenLatestMessage: true,
+          },
+        });
+      } catch (error: any) {
+        console.log("markConversationAsRead Error", error);
+        throw new GraphQLError(error?.message);
+      }
+      return true;
     },
   },
 
