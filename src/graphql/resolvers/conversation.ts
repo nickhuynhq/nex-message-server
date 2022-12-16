@@ -184,7 +184,7 @@ const resolvers = {
         (_: any, __: any, context: GraphQLContext) => {
           const { pubsub } = context;
 
-          return pubsub.asyncIterator(["CONVERASATION_UPDATED"]);
+          return pubsub.asyncIterator(["CONVERSATION_UPDATED"]);
         },
         (
           payload: ConversationUpdatedSubscriptionPayload,
@@ -201,12 +201,12 @@ const resolvers = {
 
           const { id: userId } = session.user;
           const {
-            conversationUpdated: { conversation: {participants} },
+            conversationUpdated: {
+              conversation: { participants },
+            },
           } = payload;
 
-          const userIsParticipant = userIsConversationParticipant(participants, userId);
-
-          return userIsParticipant;
+          return userIsConversationParticipant(participants, userId);
         }
       ),
     },
