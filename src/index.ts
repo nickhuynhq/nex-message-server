@@ -1,58 +1,106 @@
-import { ApolloServer } from '@apollo/server';
-import { startStandaloneServer } from '@apollo/server/standalone';
+import { ApolloServer } from "@apollo/server";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { expressMiddleware } from "@apollo/server/express4";
+import cors from "cors";
+import { json } from "body-parser";
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import express from "express";
+import http from "http";
+import typeDefs from "./graphql/typeDefs";
+import resolvers from "./graphql/resolvers";
+import { getSession } from "next-auth/react";
+import { GraphQLContext, Session, SubscriptionContext } from "./util/types";
+import { PrismaClient } from "@prisma/client";
+import { WebSocketServer } from "ws";
+import { useServer } from "graphql-ws/lib/use/ws";
+import { PubSub } from "graphql-subscriptions";
+import * as dotenv from "dotenv";
 
-// A schema is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-// your data.
-const typeDefs = `#graphql
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
+async function main() {
+  dotenv.config();
+  const app = express();
+  const httpServer = http.createServer(app);
 
-  # This "Book" type defines the queryable fields for every book in our data source.
-  type Book {
-    title: String
-    author: String
-  }
+  // Creating the WebSocket subscription server
+  const wsServer = new WebSocketServer({
+    // This is the `httpServer` returned by createServer(app);
+    server: httpServer,
+    // Pass a different path here if your ApolloServer serves at
+    // a different path.
+    path: "/graphql/subscriptions",
+  });
 
-  # The "Query" type is special: it lists all of the available queries that
-  # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
-  type Query {
-    books: [Book]
-  }
-`;
-
-const books = [
-    {
-      title: 'The Awakening',
-      author: 'Kate Chopin',
-    },
-    {
-      title: 'City of Glass',
-      author: 'Paul Auster',
-    },
-  ];
-
-// Resolvers define how to fetch the types defined in your schema.
-// This resolver retrieves books from the "books" array above.
-const resolvers = {
-    Query: {
-      books: () => books,
-    },
-  };
-
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({
+  const schema = makeExecutableSchema({
     typeDefs,
     resolvers,
   });
-  
-  // Passing an ApolloServer instance to the `startStandaloneServer` function:
-  //  1. creates an Express app
-  //  2. installs your ApolloServer instance as middleware
-  //  3. prepares your app to handle incoming requests
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000 },
+
+  // Context parameters
+  const prisma = new PrismaClient();
+  const pubsub = new PubSub();
+
+  // Passing in an instance of a GraphQLSchema and
+  // telling the WebSocketServer to start listening
+  const serverCleanup = useServer(
+    {
+      schema,
+      context: async (ctx: SubscriptionContext): Promise<GraphQLContext> => {
+        if (ctx.connectionParams && ctx.connectionParams.session) {
+          const { session } = ctx.connectionParams;
+
+          return { session, prisma, pubsub };
+        }
+
+        return { session: null, prisma, pubsub };
+      },
+    },
+    wsServer
+  );
+
+  const server = new ApolloServer({
+    schema,
+    csrfPrevention: true,
+    plugins: [
+      // Proper shutdown for the HTTP server.
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+
+      // Proper shutdown for the WebSocket server.
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose();
+            },
+          };
+        },
+      },
+    ],
   });
-  
-  console.log(`🚀  Server ready at: ${url}`);
+  await server.start();
+
+  const corsOptions = {
+    origin: process.env.CLIENT_ORIGIN,
+    credentials: true,
+  };
+
+  app.use(
+    "/graphql",
+    cors<cors.CorsRequest>(corsOptions),
+    json(),
+    expressMiddleware(server, {
+      context: async ({ req }): Promise<GraphQLContext> => {
+        const session = await getSession({ req });
+
+        return { session: session as Session, prisma, pubsub };
+      },
+    })
+  );
+
+  const PORT = 4000;
+  await new Promise<void>((resolve) =>
+    httpServer.listen({ port: PORT }, resolve)
+  );
+  console.log(`Server is now running on http://localhost:${PORT}/graphql`);
+}
+
+main().catch((error) => console.log(error));
