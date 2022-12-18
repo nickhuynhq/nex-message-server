@@ -1,4 +1,5 @@
 import {
+  ConversationDeletedSubscriptionPayload,
   ConversationPopulated,
   ConversationUpdatedSubscriptionPayload,
   GraphQLContext,
@@ -181,7 +182,7 @@ const resolvers = {
 
         pubsub.publish("CONVERSATION_DELETED", {
           conversationDeleted: deletedConversation,
-        })
+        });
       } catch (error: any) {
         console.log("deleteConversation error", error);
         throw new GraphQLError("Fail to delete conversation");
@@ -238,8 +239,6 @@ const resolvers = {
         ) => {
           const { session } = context;
 
-          console.log("HERE IS PAYLOAD", payload);
-
           if (!session?.user) {
             throw new GraphQLError("Not authorized");
           }
@@ -249,6 +248,34 @@ const resolvers = {
             conversationUpdated: {
               conversation: { participants },
             },
+          } = payload;
+
+          return userIsConversationParticipant(participants, userId);
+        }
+      ),
+    },
+
+    conversationDeleted: {
+      subscribe: withFilter(
+        (_: any, __: any, context: GraphQLContext) => {
+          const { pubsub } = context;
+
+          return pubsub.asyncIterator(["CONVERSATION_DELETED"]);
+        },
+        (
+          payload: ConversationDeletedSubscriptionPayload,
+          _: any,
+          context: GraphQLContext
+        ) => {
+          const { session } = context;
+
+          if (!session?.user) {
+            throw new GraphQLError("Not authorized");
+          }
+
+          const { id: userId } = session.user;
+          const {
+            conversationDeleted: { participants },
           } = payload;
 
           return userIsConversationParticipant(participants, userId);
