@@ -143,6 +143,51 @@ const resolvers = {
         throw new GraphQLError(error?.message);
       }
     },
+
+    deleteConversation: async function (
+      _: any,
+      args: { conversationId: string },
+      context: GraphQLContext
+    ): Promise<boolean> {
+      const { session, prisma, pubsub } = context;
+      const { conversationId } = args;
+
+      if (!session?.user) {
+        throw new GraphQLError("Not Authorized");
+      }
+
+      try {
+        // Delete conversation and related entities
+        // Transaction allows for multiple db operations
+        // All operations must be successfull for it to work
+        const [deletedConversation] = await prisma.$transaction([
+          prisma.conversation.delete({
+            where: {
+              id: conversationId,
+            },
+            include: conversationPopulated,
+          }),
+          prisma.conversationParticipant.deleteMany({
+            where: {
+              conversationId,
+            },
+          }),
+          prisma.message.deleteMany({
+            where: {
+              conversationId,
+            },
+          }),
+        ]);
+
+        pubsub.publish("CONVERSATION_DELETED", {
+          conversationDeleted: deletedConversation,
+        })
+      } catch (error: any) {
+        console.log("deleteConversation error", error);
+        throw new GraphQLError("Fail to delete conversation");
+      }
+      return true;
+    },
   },
 
   Subscription: {
