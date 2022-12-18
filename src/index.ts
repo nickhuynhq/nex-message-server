@@ -96,11 +96,10 @@ async function main() {
     })
   );
 
-  const PORT = 4000;
   await new Promise<void>((resolve) =>
-    httpServer.listen({ port: PORT }, resolve)
+    httpServer.listen({ port: process.env.PORT }, resolve)
   );
-  console.log(`Server is now running on http://localhost:${PORT}/graphql`);
+  console.log(`Server is now running on http://localhost:${process.env.PORT}/graphql`);
 }
 
 main().catch((error) => console.log(error));
