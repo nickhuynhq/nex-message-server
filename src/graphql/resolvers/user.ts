@@ -53,6 +53,7 @@ const resolvers = {
       const { session, prisma } = context;
 
       if (!session?.user) {
+        console.log(session?.user)
         return {
           error: "Not Authorized",
         };
