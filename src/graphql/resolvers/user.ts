@@ -1,5 +1,5 @@
 import { CreateUsernameResponse, GraphQLContext } from "../../util/types";
-import {GraphQLError} from 'graphql'
+import { GraphQLError } from "graphql";
 import { User } from "@prisma/client";
 
 const resolvers = {
@@ -21,7 +21,6 @@ const resolvers = {
       } = session;
 
       try {
-
         // Search username where it contains the input but is not myUsername
         // Mode is set to Case insensitive ie. "T or t"
         const users = await prisma.user.findMany({
@@ -35,7 +34,6 @@ const resolvers = {
         });
 
         return users;
-        
       } catch (error: any) {
         console.log("searchUsers error", error);
         throw new GraphQLError(error?.message);
@@ -51,10 +49,10 @@ const resolvers = {
     ): Promise<CreateUsernameResponse> => {
       const { username } = args;
       const { session, prisma } = context;
-      
-      console.log("SESSION:", session)
-      console.log("CONTEXT:", context)
-      
+
+      console.log("SESSION:", session);
+      console.log("USERNAME:", username);
+
       if (!session?.user) {
         return {
           error: "Not Authorized",
