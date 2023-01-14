@@ -9,6 +9,7 @@ import http from "http";
 import typeDefs from "./graphql/typeDefs";
 import resolvers from "./graphql/resolvers";
 import { getSession } from "next-auth/react";
+import {unstable_getServerSession} from "next-auth/next";
 import { GraphQLContext, Session, SubscriptionContext } from "./util/types";
 import { PrismaClient } from "@prisma/client";
 import { WebSocketServer } from "ws";
@@ -90,7 +91,7 @@ async function main() {
     expressMiddleware(server, {
       context: async ({ req }): Promise<GraphQLContext> => {
         const session = await getSession({ req });
-        console.log(session);
+        console.log("SESSION INDEX", session);
         return { session: session as Session, prisma, pubsub };
       },
     })
