@@ -53,6 +53,7 @@ const resolvers = {
       const { session, prisma } = context;
       
       console.log("SESSION:", session)
+      console.log("CONTEXT:", context)
       
       if (!session?.user) {
         return {
