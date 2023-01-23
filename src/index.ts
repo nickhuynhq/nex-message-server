@@ -90,7 +90,7 @@ async function main() {
     json(),
     expressMiddleware(server, {
       context: async ({ req }): Promise<GraphQLContext> => {
-        const session = unstable_getServerSession({ req });
+        const session = await getSession({ req });
         console.log("REQUEST", req);
         console.log("SESSION INDEX", session);
         return { session: session as Session, prisma, pubsub };
